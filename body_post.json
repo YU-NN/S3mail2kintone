@@ -1,0 +1,20 @@
+{
+    "app": 11,
+    "record":{
+            "FromEmailAdress":{
+                "value": "email"
+            },
+            "ToEmailAdress":{
+                "value": "email"
+            },
+            "Subject":{
+                "value": "subject"
+            },
+            "Timestamp":{
+                "value": "timestmap"
+            },
+            "Contents":{
+                "value": "contents"
+            }
+        }
+}
