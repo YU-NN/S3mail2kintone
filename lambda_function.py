@@ -6,6 +6,8 @@ import os
 import botocore
 import requests
 import time
+import email
+from email.header import decode_header
 
 s3 = boto3.resource("s3")
 client = s3.meta.client
@@ -38,27 +40,34 @@ def lambda_handler(event, context):
     try:
         time.sleep(0.2)
         response = client.get_object(Bucket=bucket,Key=key)
-        mail = response["Body"].read().decode("utf-8")
+        email_body   = response["Body"].read().decode("utf-8")
+        email_obj = email.message_from_string(email_body)
 
-        #"envelope-from="以降の文字列を取得して、”;”でfrom_addressを取得する。
-        encoded_subject = mail.split("Subject: ")[1].split("\r\n")[0]
-        subject = ""
-        if("=?utf-8?B?" in encoded_subject):
-            encoded_subject = encoded_subject.split("=?utf-8?B?")[1].split("?=")[0]
-            subject         = (base64.b64decode(encoded_subject)).decode("utf-8")
-        else:
-            subject = encoded_subject
+        body = ""
+        attach_fname = ""
+        attach_file_list = []
 
-
-        date            = mail.split("Date: ")[1].split("References:")[0].split("\r\n")[0]
-        to_adress       = mail.split("To: ")[1].split("In-Reply")[0].split("\r\n")[0]
-        from_address    = mail.split("envelope-from=")[1].split(";")[0]
-        encoded_body    = mail.split("\r\n\r\n")[1].split("\r\n")[0]
-
-        try:
-            body        = (base64.b64decode(encoded_body)).decode("utf-8").split("\r\n\r\n")[0]
-        except Exception as e:
-            body        = encoded_body
+        for part in email_obj.walk():
+            # ContentTypeがmultipartの場合は実際のコンテンツはさらに
+            # 中のpartにあるので読み飛ばす
+            if part.get_content_maintype() == 'multipart':
+                continue
+            # ファイル名の取得
+            attach_fname = part.get_filename()
+            # ファイル名がない場合は本文のはず
+            if not attach_fname:
+                charset = str(part.get_content_charset())
+                if charset:
+                    body += part.get_payload(decode=True).decode(charset, errors="replace")
+                else:
+                    body += part.get_payload(decode=True)
+            else:
+                # ファイル名があるならそれは添付ファイルなので
+                # データを取得する
+                attach_file_list.append({
+                    "name": attach_fname,
+                    "data": part.get_payload(decode=True)
+                })
 
 
     except botocore.exceptions.ClientError as e:
@@ -69,15 +78,35 @@ def lambda_handler(event, context):
 
 
 
-    body_post_dic["record"]["Subject"]["value"]         = subject
-    body_post_dic["record"]["FromEmailAdress"]["value"] = from_address
-    body_post_dic["record"]["ToEmailAdress"]["value"]   = to_adress
-    body_post_dic["record"]["Timestamp"]["value"]       = date
-    body_post_dic["record"]["Contents"]["value"]        = body
+    body_post_dic["record"]["Subject"]["value"]           = get_decoded_header(email_obj,"Subject")
+    body_post_dic["record"]["FromEmailAdress"]["value" ]  = get_decoded_header(email_obj,"From")
+    body_post_dic["record"]["ToEmailAdress"]["value"]     = get_decoded_header(email_obj,"To")
+    body_post_dic["record"]["Timestamp"]["value"]         = get_decoded_header(email_obj,"Date")
+    body_post_dic["record"]["Cc"]["value"]                = get_decoded_header(email_obj,"Cc")
+    body_post_dic["record"]["Attached_file_name"]["value"]= attach_fname
+    body_post_dic["record"]["Contents"]["value"]          = body.split("<html><head><meta http-equiv=")[0]
 
 
     result = RecordPost2kintone(url, headers, body_post_dic)
     return result
+
+
+def get_decoded_header(email_message,key_name):
+    ret = ""
+    raw_obj = email_message.get(key_name)
+    if raw_obj is None:
+        return ""
+    # デコードした結果をunicodeにする
+    for fragment, encoding in decode_header(raw_obj):
+        if not hasattr(fragment, "decode"):
+            ret += fragment
+            continue
+        # encodeがなければとりあえずUTF-8でデコードする
+        if encoding:
+            ret += fragment.decode(encoding)
+        else:
+            ret += fragment.decode("UTF-8")
+    return ret
 
 
 

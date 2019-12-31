@@ -15,6 +15,12 @@
             },
             "Contents":{
                 "value": "contents"
+            },
+            "Cc":{
+              "value": ""
+            },
+            "Attached_file_name":{
+              "value": ""
             }
         }
 }
