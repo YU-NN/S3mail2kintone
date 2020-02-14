@@ -78,8 +78,13 @@ def lambda_handler(event, context):
 
 
     body_post_dic["app"] = os.environ["KINTONE_APP"]
-
-    body_post_dic["record"]["email_body"]["value"]          = body.split("<html><head><meta http-equiv=")[0]
+    if "グーネット" in body:
+        body_post_dic["record"]["requester"]["value"]      = body.split("<html><head><meta http-equiv=")[0].split("お名前： ")[1].split("住所")[0]
+        body_post_dic["record"]["requested_car"]["value"]  = body.split("<html><head><meta http-equiv=")[0].split("依頼車輌： ")[1].split("年式")[0]
+    elif "カーセンサー" in body:
+        body_post_dic["record"]["requester"]["value"]      = body.split("<html><head><meta http-equiv=")[0].split("依頼者　　: ")[1].split("\n")[0]
+        body_post_dic["record"]["requested_car"]["value"]  = body.split("<html><head><meta http-equiv=")[0].split("【")[1].split("】")[0]
+    body_post_dic["record"]["email_body"]["value"]     = body.split("<html><head><meta http-equiv=")[0]
 
 
     result = RecordPost2kintone(url, headers, body_post_dic)
