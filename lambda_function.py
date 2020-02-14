@@ -25,7 +25,7 @@ headers = {headers_key: api_key}
 headers["Content-Type"] = "application/json"
 
 
-body_post_jsonfile = open("body_post.json","r")
+body_post_jsonfile = open("body4loperaio.json","r")
 body_post_dic      = json.load(body_post_jsonfile)
 
 
@@ -77,14 +77,9 @@ def lambda_handler(event, context):
             raise e
 
 
+    body_post_dic["app"] = os.environ["KINTONE_APP"]
 
-    body_post_dic["record"]["Subject"]["value"]           = get_decoded_header(email_obj,"Subject")
-    body_post_dic["record"]["FromEmailAdress"]["value" ]  = get_decoded_header(email_obj,"From")
-    body_post_dic["record"]["ToEmailAdress"]["value"]     = get_decoded_header(email_obj,"To")
-    body_post_dic["record"]["Timestamp"]["value"]         = get_decoded_header(email_obj,"Date")
-    body_post_dic["record"]["Cc"]["value"]                = get_decoded_header(email_obj,"Cc")
-    body_post_dic["record"]["Attached_file_name"]["value"]= attach_fname
-    body_post_dic["record"]["Contents"]["value"]          = body.split("<html><head><meta http-equiv=")[0]
+    body_post_dic["record"]["email_body"]["value"]          = body.split("<html><head><meta http-equiv=")[0]
 
 
     result = RecordPost2kintone(url, headers, body_post_dic)

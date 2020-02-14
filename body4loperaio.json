@@ -1,0 +1,14 @@
+{
+    "app": 0,
+    "record":{
+            "email_body":{
+                "value": "contents"
+            },
+            "requester":{
+              "value":"default"
+            },
+            "requested_car":{
+              "value": "default"
+            }
+        }
+}
