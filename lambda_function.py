@@ -28,6 +28,13 @@ api_key = os.environ["KINTONE_API_KEY"]
 headers = {headers_key: api_key}
 headers["Content-Type"] = "application/json"
 
+user = os.environ["KINTONE_USER"]
+password = os.environ["KINTONE_PASSWORD"]
+user_and_password = base64.b64encode("{}:{}".format(user,password).encode('utf-8'))
+headers["X-Cybozu-Authorization"] = user_and_password.decode('utf-8')
+
+
+
 
 body_post_jsonfile = open("body4loperaio.json","r")
 body_post_dic      = json.load(body_post_jsonfile)
@@ -83,7 +90,7 @@ def lambda_handler(event, context):
 
     body_post_dic["app"] = os.environ["KINTONE_APP"]
     if "グーネット" in body:
-        body_post_dic["record"]["string_store_name"]["value"]= get_shop_name(body.split("<html><head><meta http-equiv=")[0].split("ロペライオグループ")[1].split("御中")[0])
+        body_post_dic["record"]["string_store_name"]["value"]= get_shop_name(body.split("<html><head><meta http-equiv=")[0].split("希望時間帯")[1].split("御中")[0])
         body_post_dic["record"]["requester"]["value"]        = body.split("<html><head><meta http-equiv=")[0].split("お名前： ")[1].split("住所")[0]
         body_post_dic["record"]["requested_car"]["value"]    = body.split("<html><head><meta http-equiv=")[0].split("依頼車輌： ")[1].split("年式")[0]
     elif "カーセンサー" in body:
