@@ -7,7 +7,11 @@ import botocore
 import requests
 import time
 import email
+import re
+from collections import OrderedDict
 from email.header import decode_header
+
+
 
 s3 = boto3.resource("s3")
 client = s3.meta.client
@@ -79,11 +83,11 @@ def lambda_handler(event, context):
 
     body_post_dic["app"] = os.environ["KINTONE_APP"]
     if "グーネット" in body:
-        body_post_dic["record"]["string_store_name"]["value"]= body.split("<html><head><meta http-equiv=")[0].split("ロペライオグループ")[1].split("御中")[0]
+        body_post_dic["record"]["string_store_name"]["value"]= get_shop_name(body.split("<html><head><meta http-equiv=")[0].split("ロペライオグループ")[1].split("御中")[0])
         body_post_dic["record"]["requester"]["value"]        = body.split("<html><head><meta http-equiv=")[0].split("お名前： ")[1].split("住所")[0]
         body_post_dic["record"]["requested_car"]["value"]    = body.split("<html><head><meta http-equiv=")[0].split("依頼車輌： ")[1].split("年式")[0]
     elif "カーセンサー" in body:
-        body_post_dic["record"]["string_store_name"]["value"]= body.split("<html><head><meta http-equiv=")[0].split("ロペライオグループ／")[1].split("／")[0]
+        body_post_dic["record"]["string_store_name"]["value"]= get_shop_name(body.split("<html><head><meta http-equiv=")[0].split("ロペライオグループ／")[1].split("／")[0])
         body_post_dic["record"]["requester"]["value"]        = body.split("<html><head><meta http-equiv=")[0].split("依頼者　　: ")[1].split("\n")[0]
         body_post_dic["record"]["requested_car"]["value"]    = body.split("<html><head><meta http-equiv=")[0].split("【")[1].split("】")[0]
 
@@ -112,13 +116,29 @@ def get_decoded_header(email_message,key_name):
             ret += fragment.decode("UTF-8")
     return ret
 
+def get_shop_name(raw_shop_name):
 
+    shopDic = OrderedDict((
+        (".*浦和美園.*","浦和美園"),
+        (".*大阪中央.*","大阪中央"),
+        (".*柏.*","柏"),
+        (".*港北.*","港北"),
+        (".*郡山.*","郡山"),
+        (".*さいたま.*","さいたま"),
+        (".*仙台南.*","仙台南"),
+        (".*台場.*","台場"),
+        (".*西宮.*","西宮"),
+        (".*セントラルスクエア.*","セントラルスクエア"),
+        (".*練馬.*","練馬"),
+        (".*名古屋北.*","名古屋北"),
+        (".*江戸川.*","江戸川"),
+        (".*札幌平岸.*","札幌平岸"),
+        (".*世田谷.*","世田谷"),
+    ))
 
-
-
-
-
-
+    for key,value in shopDic.items():
+        if re.search(key,raw_shop_name):
+            return value
 
 def RecordPost2kintone(url, headers, post_record_dic):
     resp = requests.post(url, data=json.dumps(post_record_dic), headers=headers)
