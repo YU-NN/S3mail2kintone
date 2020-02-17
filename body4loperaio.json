@@ -9,6 +9,9 @@
             },
             "requested_car":{
               "value": "default"
+            },
+            "string_store_name":{
+              "value": "default"
             }
         }
 }
