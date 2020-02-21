@@ -11,6 +11,7 @@
 <br>
 
 ### 概要
+- `test@x-point-1.org`にフォーマットに沿ったメールを送ると、登録される。
 - 送られてきた商談メールから「店舗名」「車両名」「お客様名」「メール本文」を取得し、<br>Kintoneの「商談ステータス−`確認用`」に登録する。
 
 - 送られてくる`商談メールは2種類`あり、「グーネット」と「カーセンサー」。
@@ -130,3 +131,29 @@ https://www.carsensor.net/cgi-bin/CS/CSif3.cgi?CMDCD=1&BKKN=VU2720011124&SHOP=31
 ### フローの各段階の設定についての説明
 ざっくりとした流れ(フロー)は、<br>
 `メール送信` → `SES` → `S3` → `Lambda` → `Kintoneアプリ`
+
+#### ●`メール送信` → `SES`の部分の設定
+
+- SESの`region`は`us-east-1` (米国東部(バージニア北部))
+
+- ドメイン登録で`x-point-1.org`が設定されている。
+
+- `Rule set`は`loperaio-rule-set`を使用。
+
+- `Rule`は`put-loperaio-email`を使用。
+
+- 保存先のS3バケットは`loperaio-email`を指定。
+
+- `Rule`の`Recipient`は設定していないため、<br>
+現在では認証済みの全てのドメイン宛に来たメールを保存する感じになっている。<br>
+本番では、ここにロペライオのドメインを指定する。
+
+#### ●`SES` → `S3`の部分の設定
+- S3バケット`loperaio-email`にメールが保存されるように設定している。
+
+#### ●`S3` → `Lambda`の部分の設定
+-  `Lambda`の`region`は`us-east-1`(米国東部(バージニア北部))
+
+- Lmabda関数は`loperaio-S3mail2kintone`を使用。
+
+- `loperaio-email`バケットのオブジェクト
