@@ -6,7 +6,8 @@
 - フローの各段階の設定についての説明
 - 商談ステータス−`確認用`から本番用への移行の仕方
 - 送信されてくるメールの店舗名と登録されている店舗名が異なる事への対応の仕方
-
+- `lambda_function.py`の具体的なコードの説明
+- `AWS Lambda`へのアップロード
 <br>
 <br>
 
@@ -240,3 +241,81 @@ shopDic = OrderedDict((
 辞書型となっているため、`.*hogehoge.*`がメール本文から取得したデータで、keyとなります。<br>
 そして、それに対応した　valueが店舗名として返される関数となっているため、`.*hogehoge.*`に一致した店舗名を`gehogeho`にしたい場合は、`(".*hogehoge.*","gehogeho")`としてください。<br>
 ※ここのコードの編集はもしかしたら私しかできないかもしれない(Lambdaのデプロイパッケージが大きすぎてインライン編集ができない)ので、対応が必要な際は教えて下さい。
+<br>
+<br>
+### `lambda_function.py`の具体的なコードの説明
+`lambda_function.py`はAWSのLambda上で実際に実行されるファイルです。<br>
+そして、このファイルの中の、`lambda_handler`が実際の実行される関数です。<br>
+そしてこのファイルに関係しているものとして、`body4loperaio.json`があります。
+
+`lambda_function.py` には実際に役割を果たす関数として
+- `lambda_handler`
+
+- `get_shop_name`
+
+- `RecordPost2kintone`
+
+の３つがあります。<br>
+`get_shop_name`に関しては、目次でいうところの「送信されてくるメールの店舗名と登録されている店舗名が異なる事への対応の仕方」で説明できていると思うので、割愛します。
+
+#### ●`RecordPost2kintone`関数の説明
+この関数は、実際のKintoneにデータをポストするためのデータをつくる役割を果たしています。
+```
+def RecordPost2kintone(url, headers, post_record_dic):
+```
+このように宣言されているので、`url`,`headers`,`post-record_dic`が必要になります。<br>
+そのうち、`url`,`headers`をファイルの冒頭部分で作成しています。
+(`os.environ["hogehoge"]`はLambda上で設定した環境変数を取得しています。)
+```
+#Lambdaに保存した環境変数を取得
+KINTONE_URL = "https://{kintone_domain}/k/v1/record.json"
+url = KINTONE_URL.format(
+   kintone_domain=os.environ["KINTONE_DOMAIN"],
+   kintone_app=os.environ["KINTONE_APP"]
+)
+headers_key = os.environ["KINTONE_HEADERS_KEY"]
+api_key = os.environ["KINTONE_API_KEY"]
+headers = {headers_key: api_key}
+headers["Content-Type"] = "application/json"
+
+user = os.environ["KINTONE_USER"]
+password = os.environ["KINTONE_PASSWORD"]
+user_and_password = base64.b64encode("{}:{}".format(user,password).encode('utf-8'))
+headers["X-Cybozu-Authorization"] = user_and_password.decode('utf-8')
+```
+この部分の辞書型の`headers`のKeyとして、`X-Cybozu-Authorization`がありますが、これは、ルックアップフィールドを登録するためにKintoneのログイン認証が必要だからです。
+
+
+そして、`url`,`headers`以外の残りの`post_record_dic`を`lambda_handler`で作っていく。という風になります。
+
+#### ●`lambda_handler`関数の説明
+まずやっている事としては、「メールの情報の抽出」です。<br>
+46行目から87行目あたりの間で、S3に作成されたメールから、メールのボディ、添付ファイル名とそのデータが取り出されており、
+90行目から104行目あたりでは、実際に`body4loperaio.json`に沿った形式の辞書型変数`body_post_dic`にデータを入れています。<br>
+```
+body_post_dic["app"] = os.environ["KINTONE_APP"]
+  if "グーネット" in body:
+      body_post_dic["record"]["shop_name"]["value"]        = get_shop_name(body.split("<html><head><meta http-equiv=")[0].split("希望時間帯")[1].split("御中")[0])
+      body_post_dic["record"]["requester"]["value"]        = body.split("<html><head><meta http-equiv=")[0].split("お名前： ")[1].split("住所")[0]
+      body_post_dic["record"]["requested_car"]["value"]    = body.split("<html><head><meta http-equiv=")[0].split("依頼車輌： ")[1].split("年式")[0]
+      body_post_dic["record"]["car_name"]["value"]         = body.split("<html><head><meta http-equiv=")[0].split("依頼車輌： ")[1].split("年式")[0]
+      body_post_dic["record"]["user_name"]["value"]        = body.split("<html><head><meta http-equiv=")[0].split("お名前： ")[1].split("住所")[0]
+  elif "カーセンサー" in body:
+      body_post_dic["record"]["shop_name"]["value"]        = get_shop_name(body.split("<html><head><meta http-equiv=")[0].split("ロペライオグループ／")[1].split("／")[0])
+      body_post_dic["record"]["requester"]["value"]        = body.split("<html><head><meta http-equiv=")[0].split("依頼者　　: ")[1].split("\n")[0]
+      body_post_dic["record"]["requested_car"]["value"]    = body.split("<html><head><meta http-equiv=")[0].split("【")[1].split("】")[0]
+      body_post_dic["record"]["user_name"]["value"]        = body.split("<html><head><meta http-equiv=")[0].split("依頼者　　: ")[1].split("\n")[0]
+      body_post_dic["record"]["car_name"]["value"]         = body.split("<html><head><meta http-equiv=")[0].split("【")[1].split("】")[0]
+
+  body_post_dic["record"]["email_body"]["value"]           = body.split("<html><head><meta http-equiv=")[0]
+```
+特定のデータの取り出し方については、`メールの各フォーマットと、情報の該当箇所`を参照ください。<br>
+そして最後に`RecordPost2kintone`関数に渡しています。
+
+<br>
+<br>
+
+### `AWS　Lambdaへのアップロード`
+アップロードファイルが大きすぎるため、zip形式で圧縮して、アップロードする必要があります。<br>またそれに伴い、Lambda上でインライン編集ができません。<br>
+フォルダ内に移動し、
+`zip -r zip_file ./*`を実行して、できたzipファイルをアップロードしてください。
