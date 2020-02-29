@@ -219,7 +219,7 @@ APIをつかって「お客様名」に値をポストできるようにして�
 
 ### 送信されてくるメールの店舗名と登録されている店舗名が異なる事への対応の仕方
 `lambda_function.py`の`get_shop_name`関数の`shopDic`を見てください。
-```
+```python
 shopDic = OrderedDict((
         (".*浦和美園.*","浦和美園"),
         (".*大阪中央.*","大阪中央"),
@@ -266,7 +266,7 @@ def RecordPost2kintone(url, headers, post_record_dic):
 このように宣言されているので、`url`,`headers`,`post-record_dic`が必要になります。<br>
 そのうち、`url`,`headers`をファイルの冒頭部分で作成しています。
 (`os.environ["hogehoge"]`はLambda上で設定した環境変数を取得しています。)
-```
+```python
 #Lambdaに保存した環境変数を取得
 KINTONE_URL = "https://{kintone_domain}/k/v1/record.json"
 url = KINTONE_URL.format(
@@ -292,7 +292,8 @@ headers["X-Cybozu-Authorization"] = user_and_password.decode('utf-8')
 まずやっている事としては、「メールの情報の抽出」です。<br>
 46行目から87行目あたりの間で、S3に作成されたメールから、メールのボディ、添付ファイル名とそのデータが取り出されており、
 90行目から104行目あたりでは、実際に`body4loperaio.json`に沿った形式の辞書型変数`body_post_dic`にデータを入れています。<br>
-```
+
+```python
 body_post_dic["app"] = os.environ["KINTONE_APP"]
   if "グーネット" in body:
       body_post_dic["record"]["shop_name"]["value"]        = get_shop_name(body.split("<html><head><meta http-equiv=")[0].split("希望時間帯")[1].split("御中")[0])
@@ -309,6 +310,7 @@ body_post_dic["app"] = os.environ["KINTONE_APP"]
 
   body_post_dic["record"]["email_body"]["value"]           = body.split("<html><head><meta http-equiv=")[0]
 ```
+
 特定のデータの取り出し方については、`メールの各フォーマットと、情報の該当箇所`を参照ください。<br>
 そして最後に`RecordPost2kintone`関数に渡しています。
 
